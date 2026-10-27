@@ -20,6 +20,7 @@ export class tareasmobile implements ComponentFramework.ReactControl<IInputs, IO
         const props: TareasMobileAppProps = {
             dataset: dataset,
             webAPI: context.webAPI,
+            navigation: context.navigation,
             refreshData: () => {
                 if (dataset && typeof dataset.refresh === "function") {
                     dataset.refresh();

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="sec" constructor="tareasmobile" version="0.0.8" display-name-key="TareasMobile" description-key="Tarjetas dinámicas móviles para gestión de tareas de técnicos de campo" control-type="virtual" >
+  <control namespace="sec" constructor="tareasmobile" version="0.0.9" display-name-key="TareasMobile" description-key="Tarjetas dinámicas móviles para gestión de tareas de técnicos de campo" control-type="virtual" >
     <external-service-usage enabled="false">
     </external-service-usage>
     <data-set name="sampleDataSet" display-name-key="Dataset_Tareas_Mobile">

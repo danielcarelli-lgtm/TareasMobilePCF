@@ -1,9 +1,21 @@
 import * as React from "react";
-import { SearchBox, Icon, Spinner, SpinnerSize, PrimaryButton, DefaultButton } from "@fluentui/react";
+import {
+    SearchBox,
+    Icon,
+    IconButton,
+    Spinner,
+    SpinnerSize,
+    PrimaryButton,
+    DefaultButton,
+    Dialog,
+    DialogFooter,
+    DialogType
+} from "@fluentui/react";
 
 export interface TareasMobileAppProps {
     dataset: ComponentFramework.PropertyTypes.DataSet;
     webAPI: ComponentFramework.WebApi;
+    navigation: ComponentFramework.Navigation;
     refreshData: () => void;
 }
 
@@ -19,6 +31,7 @@ interface TareaItem {
     esfuerzoEstimado: number;
     horasImputadas: number;
     progreso: number;
+    tareaPadre: string;
     descripcion: string;
     proyectoNum: string;
 }
@@ -83,11 +96,35 @@ const safeGetDate = (
     return undefined;
 };
 
-export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAPI, refreshData }) => {
+const getScheduleStatus = (
+    inicio: Date | undefined,
+    fin: Date | undefined,
+    today: Date
+): { text: string; color: string } | undefined => {
+    if (!inicio || !fin) return undefined;
+
+    const toCalendarDay = (date: Date): number =>
+        Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const daysUntilStart = Math.ceil((toCalendarDay(inicio) - toCalendarDay(today)) / millisecondsPerDay);
+    const daysUntilEnd = Math.ceil((toCalendarDay(fin) - toCalendarDay(today)) / millisecondsPerDay);
+
+    if (daysUntilStart > 0) {
+        return { text: `Aún faltan ${daysUntilStart} días para el inicio`, color: "#0078d4" };
+    }
+    if (daysUntilEnd >= 0) {
+        return { text: `Faltan ${daysUntilEnd} días para finalizar la tarea`, color: "#107c10" };
+    }
+    return { text: `Vencida por ${Math.abs(daysUntilEnd)} días`, color: "#a4262c" };
+};
+
+export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAPI, navigation, refreshData }) => {
     const [searchTerm, setSearchTerm] = React.useState<string>("");
     const [selectedFilter, setSelectedFilter] = React.useState<string>("all");
     const [updatingId, setUpdatingId] = React.useState<string | null>(null);
     const [expandedId, setExpandedId] = React.useState<string | null>(null);
+    const [progressDrafts, setProgressDrafts] = React.useState<Record<string, number>>({});
+    const [confirmCompleteId, setConfirmCompleteId] = React.useState<string | null>(null);
 
     const tareas: TareaItem[] = React.useMemo(() => {
         if (!dataset || dataset.loading || !dataset.sortedRecordIds) return [];
@@ -115,6 +152,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                     esfuerzoEstimado: safeGetNumber(record, "sec_esfuerzoestimado", 0),
                     horasImputadas: safeGetNumber(record, "sec_horasimputadas", 0),
                     progreso: safeGetNumber(record, "sec_progreso", 0),
+                    tareaPadre: safeGetString(record, "sec_tareaprincipalid", "Sin tarea padre"),
                     descripcion: safeGetString(record, "sec_descripcion", "Sin descripción técnica adicional."),
                     proyectoNum: proyNum
                 };
@@ -136,21 +174,56 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
         });
     }, [tareas, searchTerm, selectedFilter]);
 
-    const handleUpdateStatus = (id: string, newStatusCode: number): void => {
+    const handleUpdateStatus = async (id: string, newStatusCode: number): Promise<boolean> => {
         setUpdatingId(id);
-        webAPI
-            .updateRecord("sec_tarea", id, {
+        try {
+            await webAPI.updateRecord("sec_tarea", id, {
                 statuscode: newStatusCode
-            })
-            .then(() => {
-                refreshData();
-                setUpdatingId(null);
-                return undefined;
-            })
-            .catch((error: unknown): void => {
-                console.error("Error al actualizar la tarea:", error);
-                setUpdatingId(null);
             });
+            refreshData();
+            return true;
+        } catch (error) {
+            console.error("Error al actualizar la tarea:", error);
+            return false;
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const handleSaveProgress = async (id: string): Promise<void> => {
+        const progress = progressDrafts[id];
+        if (typeof progress !== "number") return;
+
+        setUpdatingId(id);
+        try {
+            await webAPI.updateRecord("sec_tarea", id, {
+                sec_progreso: progress
+            });
+            setProgressDrafts((drafts) => {
+                const updatedDrafts = { ...drafts };
+                delete updatedDrafts[id];
+                return updatedDrafts;
+            });
+            refreshData();
+        } catch (error) {
+            console.error("Error al actualizar el progreso de la tarea:", error);
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const handleConfirmComplete = async (): Promise<void> => {
+        if (!confirmCompleteId) return;
+        const completed = await handleUpdateStatus(confirmCompleteId, STATUS_CODE.completed);
+        if (completed) setConfirmCompleteId(null);
+    };
+
+    const handleOpenTask = async (id: string): Promise<void> => {
+        try {
+            await navigation.openForm({ entityName: "sec_tarea", entityId: id });
+        } catch (error) {
+            console.error("Error al abrir el formulario de la tarea:", error);
+        }
     };
 
     if (!dataset || dataset.loading) {
@@ -219,6 +292,11 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                         filteredTareas.map((tarea) => {
                             const isExpanded = expandedId === tarea.id;
                             const isUpdating = updatingId === tarea.id;
+                            const displayedProgress = Math.max(
+                                0,
+                                Math.min(progressDrafts[tarea.id] ?? tarea.progreso, 100)
+                            );
+                            const scheduleStatus = getScheduleStatus(tarea.inicio, tarea.fin, new Date());
 
                             return (
                                 <div key={tarea.id} className={`tm-card ${isExpanded ? "expanded" : ""}`}>
@@ -232,13 +310,36 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                             <span className="tm-project-tag">
                                                 <Icon iconName="ProjectCollection" /> {tarea.proyectoNum}
                                             </span>
-                                            <span className={`tm-status-pill status-${tarea.statuscode}`}>
-                                                {tarea.statusLabel}
-                                            </span>
+                                            <div style={{ alignItems: "flex-end", display: "flex", flexDirection: "column" }}>
+                                                <span className={`tm-status-pill status-${tarea.statuscode}`}>
+                                                    {tarea.statusLabel}
+                                                </span>
+                                                {scheduleStatus && (
+                                                    <span
+                                                        style={{
+                                                            color: scheduleStatus.color,
+                                                            fontSize: 12,
+                                                            fontWeight: 600,
+                                                            marginTop: 4
+                                                        }}
+                                                    >
+                                                        {scheduleStatus.text}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="tm-card-title-row">
                                             <span className="tm-task-id">{tarea.idtarea}</span>
                                             <h3 className="tm-task-name">{tarea.name}</h3>
+                                            <IconButton
+                                                iconProps={{ iconName: "Edit" }}
+                                                title={`Abrir formulario de ${tarea.name}`}
+                                                ariaLabel={`Abrir formulario de ${tarea.name}`}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    void handleOpenTask(tarea.id);
+                                                }}
+                                            />
                                         </div>
                                         <div className="tm-card-preview-info">
                                             <span>
@@ -250,18 +351,81 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                         </div>
                                     </div>
 
-                                    <div className="tm-progress-bar-container">
+                                    <div
+                                        className="tm-progress-bar-container"
+                                        role="progressbar"
+                                        aria-label={`Progreso de ${tarea.name}`}
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-valuenow={displayedProgress}
+                                        aria-valuetext={`${displayedProgress}%`}
+                                        style={{
+                                            backgroundColor: "#e1e1e1",
+                                            borderRadius: 4,
+                                            height: 8,
+                                            margin: "8px 0",
+                                            overflow: "hidden"
+                                        }}
+                                    >
                                         <div
                                             className="tm-progress-fill"
-                                            style={{ width: `${Math.max(0, Math.min(tarea.progreso, 100))}%` }}
+                                            style={{
+                                                backgroundColor: "#107c10",
+                                                height: "100%",
+                                                transition: "width 160ms ease",
+                                                width: `${displayedProgress}%`
+                                            }}
                                         />
                                     </div>
 
                                     {isExpanded && (
                                         <div className="tm-card-details-panel">
                                             <div className="tm-detail-row">
+                                                <strong>Tarea padre:</strong>
+                                                <p>{tarea.tareaPadre}</p>
+                                            </div>
+                                            <div className="tm-detail-row">
                                                 <strong>Descripción:</strong>
                                                 <p>{tarea.descripcion}</p>
+                                            </div>
+                                            <div style={{ margin: "16px 0" }}>
+                                                <label
+                                                    htmlFor={`tm-progress-${tarea.id}`}
+                                                    style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}
+                                                >
+                                                    <strong>Progreso</strong>
+                                                    <span>{displayedProgress}%</span>
+                                                </label>
+                                                <input
+                                                    id={`tm-progress-${tarea.id}`}
+                                                    type="range"
+                                                    min={0}
+                                                    max={100}
+                                                    step={1}
+                                                    value={displayedProgress}
+                                                    aria-label={`Progreso de ${tarea.name}`}
+                                                    disabled={isUpdating}
+                                                    onChange={(event) => {
+                                                        setProgressDrafts((drafts) => ({
+                                                            ...drafts,
+                                                            [tarea.id]: Number(event.currentTarget.value)
+                                                        }));
+                                                    }}
+                                                    style={{ display: "block", width: "100%" }}
+                                                />
+                                                <DefaultButton
+                                                    text="Guardar progreso"
+                                                    iconProps={{ iconName: "Save" }}
+                                                    disabled={
+                                                        isUpdating ||
+                                                        progressDrafts[tarea.id] === undefined ||
+                                                        displayedProgress === Math.max(0, Math.min(tarea.progreso, 100))
+                                                    }
+                                                    onClick={() => {
+                                                        void handleSaveProgress(tarea.id);
+                                                    }}
+                                                    style={{ marginTop: 8 }}
+                                                />
                                             </div>
                                             <div className="tm-detail-dates">
                                                 <div>
@@ -287,7 +451,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                                         iconProps={{ iconName: "Play" }}
                                                         className="tm-action-btn btn-start"
                                                         onClick={() => {
-                                                            handleUpdateStatus(tarea.id, STATUS_CODE.inProgress);
+                                                            void handleUpdateStatus(tarea.id, STATUS_CODE.inProgress);
                                                         }}
                                                     />
                                                 )}
@@ -297,7 +461,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                                         iconProps={{ iconName: "Pause" }}
                                                         className="tm-action-btn btn-pause"
                                                         onClick={() => {
-                                                            handleUpdateStatus(tarea.id, STATUS_CODE.pending);
+                                                            void handleUpdateStatus(tarea.id, STATUS_CODE.pending);
                                                         }}
                                                     />
                                                 )}
@@ -307,7 +471,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                                         iconProps={{ iconName: "CheckMark" }}
                                                         className="tm-action-btn btn-complete"
                                                         onClick={() => {
-                                                            handleUpdateStatus(tarea.id, STATUS_CODE.completed);
+                                                            setConfirmCompleteId(tarea.id);
                                                         }}
                                                     />
                                                 )}
@@ -320,7 +484,37 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                     )}
                 </div>
 
-                <div className="tm-version-tag">v0.0.8</div>
+                <Dialog
+                    hidden={!confirmCompleteId}
+                    onDismiss={() => {
+                        setConfirmCompleteId(null);
+                    }}
+                    dialogContentProps={{
+                        type: DialogType.normal,
+                        title: "Completar tarea",
+                        subText: "¿Estás seguro de que quieres completar esta tarea? ¿Ya cargaste todas las horas de la tarea?"
+                    }}
+                    modalProps={{ isBlocking: updatingId === confirmCompleteId }}
+                >
+                    <DialogFooter>
+                        <PrimaryButton
+                            text="Completar"
+                            onClick={() => {
+                                void handleConfirmComplete();
+                            }}
+                            disabled={!confirmCompleteId || updatingId === confirmCompleteId}
+                        />
+                        <DefaultButton
+                            text="Cancelar"
+                            onClick={() => {
+                                setConfirmCompleteId(null);
+                            }}
+                            disabled={updatingId === confirmCompleteId}
+                        />
+                    </DialogFooter>
+                </Dialog>
+
+                <div className="tm-version-tag">v0.0.9</div>
             </div>
         </div>
     );
