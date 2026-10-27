@@ -406,12 +406,15 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                                     aria-label={`Progreso de ${tarea.name}`}
                                                     disabled={isUpdating}
                                                     onChange={(event) => {
+                                                        const progress = Number(event.currentTarget.value);
                                                         setProgressDrafts((drafts) => ({
                                                             ...drafts,
-                                                            [tarea.id]: Number(event.currentTarget.value)
+                                                            [tarea.id]: progress
                                                         }));
                                                     }}
-                                                    style={{ display: "block", width: "100%" }}
+                                                    style={{
+                                                        background: `linear-gradient(to right, #1769aa 0%, #1769aa ${displayedProgress}%, #d1d5dc ${displayedProgress}%, #d1d5dc 100%) center / 100% 6px no-repeat`
+                                                    }}
                                                 />
                                                 <DefaultButton
                                                     text="Guardar progreso"
@@ -514,7 +517,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                     </DialogFooter>
                 </Dialog>
 
-                <div className="tm-version-tag">v0.0.9</div>
+                <div className="tm-version-tag">v0.0.12</div>
             </div>
         </div>
     );

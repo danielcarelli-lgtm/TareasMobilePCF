@@ -1,308 +1,527 @@
-import * as React from "react";
-import { SearchBox, Icon, Spinner, SpinnerSize, PrimaryButton, DefaultButton } from "@fluentui/react";
-
-export interface TareasMobileAppProps {
-    dataset: ComponentFramework.PropertyTypes.DataSet;
-    webAPI: ComponentFramework.WebApi;
-    refreshData: () => void;
+.tareasmobile-main-container {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 24px;
+    background: #f5f7fa;
+    color: #242424;
+    font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    -webkit-overflow-scrolling: touch;
 }
 
-interface TareaItem {
-    id: string;
-    name: string;
-    idtarea: string;
-    statecode: number;
-    statuscode: number;
-    statusLabel: string;
-    inicio: Date | undefined;
-    fin: Date | undefined;
-    esfuerzoEstimado: number;
-    horasImputadas: number;
-    progreso: number;
-    descripcion: string;
-    proyectoNum: string;
+.tareasmobile-main-container *,
+.tm-loading-container * {
+    box-sizing: border-box;
 }
 
-const safeGetString = (
-    record: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord,
-    columnName: string,
-    fallback = ""
-): string => {
-    try {
-        const formatted = record.getFormattedValue(columnName);
-        if (formatted) return formatted;
-        const raw = record.getValue(columnName);
-        if (typeof raw === "string") return raw;
-        if (typeof raw === "number") return String(raw);
-    } catch {
-        // Ignorar si la columna no está en la vista actual
+.tm-mobile-wrapper {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+.tm-loading-container {
+    display: flex;
+    min-height: 240px;
+    align-items: center;
+    justify-content: center;
+    color: #605e5c;
+    font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+.tm-header-section {
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    border: 1px solid #e6e9ef;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(16, 24, 40, 0.05);
+}
+
+.tm-app-title {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    color: #1b365d;
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.3;
+}
+
+.tm-title-icon {
+    flex: 0 0 auto;
+    color: #1769aa;
+    font-size: 19px;
+}
+
+.tm-badge-count {
+    display: inline-flex;
+    min-width: 23px;
+    height: 23px;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    padding: 0 8px;
+    border-radius: 13px;
+    background: #e8f2fb;
+    color: #1769aa;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.tm-search-box {
+    width: 100%;
+    height: 38px;
+    margin-top: 10px;
+    border: 1px solid #d1d5dc;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.tm-search-box:hover {
+    border-color: #8a8886;
+}
+
+.tm-search-box:focus-within {
+    border-color: #1769aa;
+    box-shadow: 0 0 0 1px #1769aa;
+}
+
+.tm-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.tm-chip {
+    min-height: 30px;
+    padding: 4px 11px;
+    border: 1px solid #d9dde5;
+    border-radius: 18px;
+    background: #fff;
+    color: #484644;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.tm-chip:hover {
+    border-color: #8fb9dc;
+    background: #f2f7fc;
+}
+
+.tm-chip.active {
+    border-color: #1769aa;
+    background: #1769aa;
+    color: #fff;
+}
+
+.tm-chip:focus-visible,
+.tm-card-top:focus-visible {
+    outline: 2px solid #1769aa;
+    outline-offset: 2px;
+}
+
+.tm-cards-container {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+    gap: 14px;
+    justify-content: start;
+}
+
+.tm-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    border: 1px solid #e1e5eb;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 7px rgba(16, 24, 40, 0.045);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.tm-card:hover,
+.tm-card.expanded {
+    border-color: #b7cde0;
+    box-shadow: 0 5px 16px rgba(16, 24, 40, 0.09);
+}
+
+.tm-card-top {
+    padding: 17px 18px 12px;
+    cursor: pointer;
+}
+
+.tm-card-meta-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.tm-project-tag {
+    display: inline-flex;
+    max-width: 60%;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    padding: 5px 9px;
+    border-radius: 6px;
+    background: #f0f4f8;
+    color: #44566c;
+    font-size: 12px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tm-status-pill {
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    padding: 4px 9px;
+    border-radius: 12px;
+    background: #f3f2f1;
+    color: #605e5c;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.tm-status-pill.status-1 {
+    background: #fff4ce;
+    color: #8a5a00;
+}
+
+.tm-status-pill.status-919690001 {
+    background: #e5f1fb;
+    color: #075a9e;
+}
+
+.tm-status-pill.status-919690002,
+.tm-status-pill.status-2 {
+    background: #e7f4e4;
+    color: #237a35;
+}
+
+.tm-card-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-top: 13px;
+}
+
+.tm-task-id {
+    flex: 0 0 auto;
+    margin-top: 3px;
+    color: #1769aa;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.tm-task-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    color: #242424;
+    font-size: 16px;
+    font-weight: 650;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.tm-card-title-row .ms-Button {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    margin: -5px -7px 0 0;
+    border-radius: 6px;
+}
+
+.tm-card-title-row .ms-Button:hover {
+    background: #eef4fa;
+    color: #1769aa;
+}
+
+.tm-card-preview-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+    color: #605e5c;
+    font-size: 12px;
+}
+
+.tm-card-preview-info > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tm-expand-indicator {
+    color: #605e5c;
+    font-size: 14px;
+}
+
+.tm-progress-bar-container {
+    height: 6px;
+    margin: 0 18px 16px;
+    border-radius: 4px;
+    background: #e8ebef;
+}
+
+.tm-progress-fill {
+    border-radius: inherit;
+}
+
+.tm-card-details-panel {
+    margin: 0 18px;
+    padding: 16px 0;
+    border-top: 1px solid #edebe9;
+}
+
+.tm-detail-row + .tm-detail-row {
+    margin-top: 12px;
+}
+
+.tm-detail-row strong,
+.tm-card-details-panel label strong {
+    color: #323130;
+    font-size: 13px;
+}
+
+.tm-detail-row p {
+    margin: 4px 0 0;
+    color: #605e5c;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.tm-detail-dates {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.tm-detail-dates > div {
+    display: grid;
+    gap: 4px;
+}
+
+.tm-detail-dates small {
+    color: #797775;
+    font-size: 11px;
+}
+
+.tm-detail-dates span {
+    color: #323130;
+    font-size: 13px;
+}
+
+.tm-card-details-panel input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    height: 32px;
+    touch-action: pan-x;
+}
+
+.tm-card-details-panel input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 3px;
+    background: transparent;
+}
+
+.tm-card-details-panel input[type="range"]::-moz-range-track {
+    height: 6px;
+    border-radius: 3px;
+    background: transparent;
+}
+
+.tm-card-details-panel input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    margin-top: -7px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #1769aa;
+    box-shadow: 0 0 0 1px #1769aa;
+}
+
+.tm-card-details-panel input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #1769aa;
+    box-shadow: 0 0 0 1px #1769aa;
+}
+
+.tm-card-details-panel input[type="range"]:focus-visible {
+    outline: 2px solid #1769aa;
+    outline-offset: 2px;
+}
+
+.tm-card-details-panel input[type="range"]:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.tm-card-details-panel input[type="range"]::-moz-range-progress {
+    background: transparent;
+}
+
+.tm-card-details-panel .ms-Button {
+    border-radius: 6px;
+}
+
+.tm-card-footer {
+    display: flex;
+    min-height: 58px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 18px;
+    border-top: 1px solid #f0f0f0;
+    background: #fcfcfd;
+}
+
+.tm-action-btn {
+    min-height: 34px;
+    border-radius: 6px;
+}
+
+.tm-action-btn .ms-Button-label {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.tm-action-btn.btn-pause {
+    border-color: #d1d5dc;
+    background: #fff;
+    color: #484644;
+}
+
+.tm-action-btn.btn-pause:hover {
+    border-color: #a19f9d;
+    background: #f8f8f8;
+}
+
+.tm-no-records {
+    display: flex;
+    min-height: 190px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    border: 1px dashed #c8cdd5;
+    border-radius: 12px;
+    background: #fff;
+    color: #605e5c;
+    text-align: center;
+}
+
+.tm-empty-icon {
+    color: #8a9bad;
+    font-size: 28px;
+}
+
+.tm-no-records p {
+    margin: 12px 0 0;
+    font-size: 14px;
+}
+
+.tm-version-tag {
+    padding: 16px 0 4px;
+    color: #8a8886;
+    font-size: 11px;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .tareasmobile-main-container {
+        padding: 12px;
     }
-    return fallback;
-};
 
-const safeGetNumber = (
-    record: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord,
-    columnName: string,
-    fallback = 0
-): number => {
-    try {
-        const raw = record.getValue(columnName);
-        if (typeof raw === "number" && !isNaN(raw)) return raw;
-        if (typeof raw === "string" && raw.trim() !== "") {
-            const parsed = Number(raw);
-            if (!isNaN(parsed)) return parsed;
-        }
-    } catch {
-        // Ignorar si la columna no está en la vista actual
-    }
-    return fallback;
-};
-
-const safeGetDate = (
-    record: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord,
-    columnName: string
-): Date | undefined => {
-    try {
-        const raw = record.getValue(columnName);
-        if (!raw) return undefined;
-        if (raw instanceof Date) return raw;
-        if (typeof raw === "string" || typeof raw === "number") {
-            const d = new Date(raw);
-            return isNaN(d.getTime()) ? undefined : d;
-        }
-    } catch {
-        // Ignorar si la columna no está en la vista actual
-    }
-    return undefined;
-};
-
-export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAPI, refreshData }) => {
-    const [searchTerm, setSearchTerm] = React.useState<string>("");
-    const [selectedFilter, setSelectedFilter] = React.useState<string>("all");
-    const [updatingId, setUpdatingId] = React.useState<string | null>(null);
-    const [expandedId, setExpandedId] = React.useState<string | null>(null);
-
-    const tareas: TareaItem[] = React.useMemo(() => {
-        if (!dataset || dataset.loading || !dataset.sortedRecordIds) return [];
-
-        const proyectoNumCol =
-            dataset.columns?.find((c) => c.name.endsWith(".sec_numerodeproyecto"))?.name ??
-            "a_68c5f551b320412b99fdb34e6b8d2dac.sec_numerodeproyecto";
-
-        return dataset.sortedRecordIds
-            .map((id) => {
-                const record = dataset.records[id];
-                if (!record) return null;
-
-                const linkedProyNum = safeGetString(record, proyectoNumCol, "");
-                const proyNum = linkedProyNum !== "" ? linkedProyNum : safeGetString(record, "sec_proyectoid", "S/P");
-
-                return {
-                    id: record.getRecordId(),
-                    name: safeGetString(record, "sec_name", "Sin nombre"),
-                    idtarea: safeGetString(record, "sec_idtarea", ""),
-                    statecode: safeGetNumber(record, "statecode", 0),
-                    statuscode: safeGetNumber(record, "statuscode", 1),
-                    statusLabel: safeGetString(record, "statuscode", "Pendiente"),
-                    inicio: safeGetDate(record, "sec_inicio"),
-                    fin: safeGetDate(record, "sec_fin"),
-                    esfuerzoEstimado: safeGetNumber(record, "sec_esfuerzoestimado", 0),
-                    horasImputadas: safeGetNumber(record, "sec_horasimputadas", 0),
-                    progreso: safeGetNumber(record, "sec_progreso", 0),
-                    descripcion: safeGetString(record, "sec_descripcion", "Sin descripción técnica adicional."),
-                    proyectoNum: proyNum
-                };
-            })
-            .filter((item): item is TareaItem => item !== null);
-    }, [dataset, dataset?.loading, dataset?.sortedRecordIds, dataset?.records]);
-
-    const filteredTareas = React.useMemo(() => {
-        return tareas.filter((t) => {
-            const matchesSearch =
-                t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.idtarea.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.proyectoNum.toLowerCase().includes(searchTerm.toLowerCase());
-
-            if (selectedFilter === "all") return matchesSearch;
-            if (selectedFilter === "in_progress") return matchesSearch && t.statuscode === 919690001;
-            if (selectedFilter === "pending") return matchesSearch && t.statuscode === 1;
-            return matchesSearch;
-        });
-    }, [tareas, searchTerm, selectedFilter]);
-
-    const handleUpdateStatus = async (id: string, newStatusCode: number): Promise<void> => {
-        setUpdatingId(id);
-        try {
-            await webAPI.updateRecord("sec_tarea", id, {
-                statuscode: newStatusCode
-            });
-            refreshData();
-        } catch (error) {
-            console.error("Error al actualizar la tarea:", error);
-        } finally {
-            setUpdatingId(null);
-        }
-    };
-
-    if (!dataset || dataset.loading) {
-        return (
-            <div className="tm-loading-container">
-                <Spinner size={SpinnerSize.large} label="Cargando tareas de campo..." />
-            </div>
-        );
+    .tm-header-section {
+        margin-bottom: 10px;
+        padding: 11px 12px;
+        border-radius: 11px;
     }
 
-    return (
-        <div className="tareasmobile-main-container">
-            <div className="tm-mobile-wrapper">
-                <div className="tm-header-section">
-                    <div className="tm-app-title">
-                        <Icon iconName="TaskManager" className="tm-title-icon" />
-                        <span>Mis Tareas de Campo</span>
-                        <span className="tm-badge-count">{filteredTareas.length}</span>
-                    </div>
-                    <SearchBox
-                        placeholder="Buscar tarea, ID o proyecto..."
-                        value={searchTerm}
-                        onChange={(_, val) => {
-                            setSearchTerm(val ?? "");
-                        }}
-                        className="tm-search-box"
-                    />
-                    <div className="tm-filter-chips">
-                        <button
-                            type="button"
-                            className={`tm-chip ${selectedFilter === "all" ? "active" : ""}`}
-                            onClick={() => {
-                                setSelectedFilter("all");
-                            }}
-                        >
-                            Todas
-                        </button>
-                        <button
-                            type="button"
-                            className={`tm-chip ${selectedFilter === "pending" ? "active" : ""}`}
-                            onClick={() => {
-                                setSelectedFilter("pending");
-                            }}
-                        >
-                            Pendientes
-                        </button>
-                        <button
-                            type="button"
-                            className={`tm-chip ${selectedFilter === "in_progress" ? "active" : ""}`}
-                            onClick={() => {
-                                setSelectedFilter("in_progress");
-                            }}
-                        >
-                            En Curso
-                        </button>
-                    </div>
-                </div>
+    .tm-app-title {
+        gap: 7px;
+        font-size: 17px;
+    }
 
-                <div className="tm-cards-container">
-                    {filteredTareas.length === 0 ? (
-                        <div className="tm-no-records">
-                            <Icon iconName="Inbox" className="tm-empty-icon" />
-                            <p>No se encontraron tareas asignadas</p>
-                        </div>
-                    ) : (
-                        filteredTareas.map((tarea) => {
-                            const isExpanded = expandedId === tarea.id;
-                            const isUpdating = updatingId === tarea.id;
+    .tm-card-top {
+        padding: 15px 15px 11px;
+    }
 
-                            return (
-                                <div key={tarea.id} className={`tm-card ${isExpanded ? "expanded" : ""}`}>
-                                    <div
-                                        className="tm-card-top"
-                                        onClick={() => {
-                                            setExpandedId(isExpanded ? null : tarea.id);
-                                        }}
-                                    >
-                                        <div className="tm-card-meta-top">
-                                            <span className="tm-project-tag">
-                                                <Icon iconName="ProjectCollection" /> {tarea.proyectoNum}
-                                            </span>
-                                            <span className={`tm-status-pill status-${tarea.statuscode}`}>
-                                                {tarea.statusLabel}
-                                            </span>
-                                        </div>
-                                        <div className="tm-card-title-row">
-                                            <span className="tm-task-id">{tarea.idtarea}</span>
-                                            <h3 className="tm-task-name">{tarea.name}</h3>
-                                        </div>
-                                        <div className="tm-card-preview-info">
-                                            <span>
-                                                <Icon iconName="Clock" /> {tarea.horasImputadas}h / {tarea.esfuerzoEstimado}h est.
-                                            </span>
-                                            <span className="tm-expand-indicator">
-                                                <Icon iconName={isExpanded ? "ChevronUp" : "ChevronDown"} />
-                                            </span>
-                                        </div>
-                                    </div>
+    .tm-progress-bar-container {
+        margin-right: 15px;
+        margin-left: 15px;
+    }
 
-                                    <div className="tm-progress-bar-container">
-                                        <div
-                                            className="tm-progress-fill"
-                                            style={{ width: `${Math.max(0, Math.min(tarea.progreso, 100))}%` }}
-                                        />
-                                    </div>
+    .tm-card-details-panel {
+        margin-right: 15px;
+        margin-left: 15px;
+    }
 
-                                    {isExpanded && (
-                                        <div className="tm-card-details-panel">
-                                            <div className="tm-detail-row">
-                                                <strong>Descripción:</strong>
-                                                <p>{tarea.descripcion}</p>
-                                            </div>
-                                            <div className="tm-detail-dates">
-                                                <div>
-                                                    <small>Inicio:</small>
-                                                    <span>{tarea.inicio ? tarea.inicio.toLocaleDateString() : "No definida"}</span>
-                                                </div>
-                                                <div>
-                                                    <small>Fin:</small>
-                                                    <span>{tarea.fin ? tarea.fin.toLocaleDateString() : "No definida"}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+    .tm-card-footer {
+        justify-content: stretch;
+        padding-right: 15px;
+        padding-left: 15px;
+    }
 
-                                    <div className="tm-card-footer">
-                                        {isUpdating ? (
-                                            <Spinner size={SpinnerSize.small} label="Actualizando..." />
-                                        ) : (
-                                            <>
-                                                {tarea.statuscode === 1 && (
-                                                    <PrimaryButton
-                                                        text="Iniciar Tarea"
-                                                        iconProps={{ iconName: "Play" }}
-                                                        className="tm-action-btn btn-start"
-                                                        onClick={() => {
-                                                            void handleUpdateStatus(tarea.id, 919690001);
-                                                        }}
-                                                    />
-                                                )}
-                                                {tarea.statuscode === 919690001 && (
-                                                    <DefaultButton
-                                                        text="Pausar / Pendiente"
-                                                        iconProps={{ iconName: "Pause" }}
-                                                        className="tm-action-btn btn-pause"
-                                                        onClick={() => {
-                                                            void handleUpdateStatus(tarea.id, 1);
-                                                        }}
-                                                    />
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
+    .tm-action-btn {
+        flex: 1 1 auto;
+    }
 
-                <div className="tm-version-tag">v0.0.8</div>
-            </div>
-        </div>
-    );
-};
+    .tm-action-btn .ms-Button-flexContainer {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 380px) {
+    .tm-card-meta-top {
+        flex-wrap: wrap;
+    }
+
+    .tm-project-tag {
+        max-width: 100%;
+    }
+
+    .tm-card-title-row {
+        gap: 6px;
+    }
+
+    .tm-task-name {
+        font-size: 15px;
+    }
+}
