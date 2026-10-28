@@ -36,12 +36,31 @@ interface TareaItem {
     proyectoNum: string;
 }
 
+interface ResumenProductos {
+    pendientes: number;
+    instalados: number;
+    devueltos: number;
+}
+
 const STATUS_CODE = {
     pending: 1,
     inactive: 2,
     inProgress: 919690001,
     completed: 919690002
 } as const;
+
+const EMPTY_PRODUCT_SUMMARY: ResumenProductos = {
+    pendientes: 0,
+    instalados: 0,
+    devueltos: 0
+};
+
+const normalizeRecordId = (id: string): string => id.replace(/[{}]/g, "").toLowerCase();
+
+const getProductStatusLabel = (record: ComponentFramework.WebApi.Entity): string => {
+    const formattedValue: unknown = record["sec_estadodelproducto@OData.Community.Display.V1.FormattedValue"];
+    return typeof formattedValue === "string" ? formattedValue.toLowerCase() : "";
+};
 
 const safeGetString = (
     record: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord,
@@ -125,6 +144,8 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
     const [expandedId, setExpandedId] = React.useState<string | null>(null);
     const [progressDrafts, setProgressDrafts] = React.useState<Record<string, number>>({});
     const [confirmCompleteId, setConfirmCompleteId] = React.useState<string | null>(null);
+    const [resumenProductos, setResumenProductos] = React.useState<Record<string, ResumenProductos>>({});
+    const [errorResumenProductos, setErrorResumenProductos] = React.useState(false);
 
     const tareas: TareaItem[] = React.useMemo(() => {
         if (!dataset || dataset.loading || !dataset.sortedRecordIds) return [];
@@ -159,6 +180,90 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
             })
             .filter((item): item is TareaItem => item !== null);
     }, [dataset, dataset?.loading, dataset?.sortedRecordIds, dataset?.records]);
+
+    React.useEffect(() => {
+        const tareaIds = Array.from(
+            new Set(
+                tareas
+                    .map((tarea) => normalizeRecordId(tarea.id))
+                    .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id))
+            )
+        );
+        let cancelled = false;
+
+        setResumenProductos({});
+        setErrorResumenProductos(false);
+        if (tareaIds.length === 0) return;
+
+        const cargarResumenProductos = async (): Promise<void> => {
+            const condiciones = tareaIds
+                .map((id) => `<condition attribute="sec_tareadeproyectoid" operator="eq" value="${id}" />`)
+                .join("");
+            const fetchXml = [
+                '<fetch version="1.0" mapping="logical" no-lock="false" distinct="true">',
+                '<entity name="sec_lineadeproductodeproyecto">',
+                '<attribute name="statecode" />',
+                '<attribute name="sec_lineadeproductodeproyectoid" />',
+                '<attribute name="sec_name" />',
+                '<attribute name="sec_estadodelproducto" />',
+                '<attribute name="sec_numerodeserie" />',
+                '<attribute name="sec_descripciondelaubicacion" />',
+                '<attribute name="sec_productodeproyectoid" />',
+                '<attribute name="sec_tareadeproyectoid" />',
+                '<order attribute="sec_name" descending="false" />',
+                '<filter type="and">',
+                '<condition attribute="statecode" operator="eq" value="0" />',
+                `<filter type="or">${condiciones}</filter>`,
+                "</filter>",
+                "</entity>",
+                "</fetch>"
+            ].join("");
+
+            try {
+                const nextSummaries: Record<string, ResumenProductos> = {};
+                let response = await webAPI.retrieveMultipleRecords(
+                    "sec_lineadeproductodeproyecto",
+                    `?fetchXml=${encodeURIComponent(fetchXml)}`,
+                    5000
+                );
+
+                while (true) {
+                    response.entities.forEach((record) => {
+                        const taskId: unknown = record._sec_tareadeproyectoid_value;
+                        if (typeof taskId !== "string") return;
+                        const normalizedTaskId = normalizeRecordId(taskId);
+                        const summary = nextSummaries[normalizedTaskId] ?? { ...EMPTY_PRODUCT_SUMMARY };
+                        const status = getProductStatusLabel(record);
+
+                        if (status.includes("pend")) summary.pendientes += 1;
+                        else if (status.includes("instal")) summary.instalados += 1;
+                        else if (status.includes("devuelt")) summary.devueltos += 1;
+
+                        nextSummaries[normalizedTaskId] = summary;
+                    });
+
+                    if (!response.nextLink) break;
+                    response = await webAPI.retrieveMultipleRecords(
+                        "sec_lineadeproductodeproyecto",
+                        response.nextLink,
+                        5000
+                    );
+                }
+
+                if (!cancelled) setResumenProductos(nextSummaries);
+            } catch (error) {
+                if (!cancelled) {
+                    console.error("Error al cargar el resumen de productos de las tareas:", error);
+                    setErrorResumenProductos(true);
+                }
+            }
+        };
+
+        void cargarResumenProductos();
+        return () => {
+            cancelled = true;
+        };
+    }, [tareas, webAPI]);
 
     const filteredTareas = React.useMemo(() => {
         return tareas.filter((t) => {
@@ -297,6 +402,8 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                 Math.min(progressDrafts[tarea.id] ?? tarea.progreso, 100)
                             );
                             const scheduleStatus = getScheduleStatus(tarea.inicio, tarea.fin, new Date());
+                            const resumenProductosTarea =
+                                resumenProductos[normalizeRecordId(tarea.id)] ?? EMPTY_PRODUCT_SUMMARY;
 
                             return (
                                 <div key={tarea.id} className={`tm-card ${isExpanded ? "expanded" : ""}`}>
@@ -345,6 +452,24 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                             <span>
                                                 <Icon iconName="Clock" /> {tarea.horasImputadas}h / {tarea.esfuerzoEstimado}h est.
                                             </span>
+                                            {errorResumenProductos ? (
+                                                <span className="tm-product-summary-error">Resumen de productos no disponible</span>
+                                            ) : (
+                                                <div
+                                                    className="tm-product-summary"
+                                                    aria-label={`Productos de ${tarea.name}: ${resumenProductosTarea.pendientes} pendientes, ${resumenProductosTarea.instalados} instalados y ${resumenProductosTarea.devueltos} devueltos`}
+                                                >
+                                                    <span className="tm-product-count product-pending">
+                                                        Pendientes {resumenProductosTarea.pendientes}
+                                                    </span>
+                                                    <span className="tm-product-count product-installed">
+                                                        Instalados {resumenProductosTarea.instalados}
+                                                    </span>
+                                                    <span className="tm-product-count product-returned">
+                                                        Devueltos {resumenProductosTarea.devueltos}
+                                                    </span>
+                                                </div>
+                                            )}
                                             <span className="tm-expand-indicator">
                                                 <Icon iconName={isExpanded ? "ChevronUp" : "ChevronDown"} />
                                             </span>

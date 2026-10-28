@@ -258,6 +258,7 @@
 
 .tm-card-preview-info {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
@@ -270,6 +271,44 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+}
+
+.tm-product-summary {
+    display: flex;
+    flex: 1 1 180px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.tm-product-count {
+    padding: 3px 7px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.tm-product-count.product-pending {
+    background: #fff4ce;
+    color: #8a5a00;
+}
+
+.tm-product-count.product-installed {
+    background: #e7f4e4;
+    color: #237a35;
+}
+
+.tm-product-count.product-returned {
+    background: #f3e8f7;
+    color: #6b3a7d;
+}
+
+.tm-product-summary-error {
+    color: #a4262c;
+    font-size: 11px;
 }
 
 .tm-expand-indicator {
