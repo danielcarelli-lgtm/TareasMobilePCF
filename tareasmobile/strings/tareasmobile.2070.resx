@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="TareasMobile_Title" xml:space="preserve"><value>Tarefas Mobile</value></data>
+  <data name="TareasMobile_Desc" xml:space="preserve"><value>Cartões móveis dinâmicos para gestão de tarefas de técnicos de campo</value></data>
+  <data name="Dataset_Tareas_Mobile" xml:space="preserve"><value>Dataset Tarefas Mobile</value></data>
+  <data name="Title_App" xml:space="preserve"><value>As Minhas Tarefas de Campo</value></data>
+  <data name="Placeholder_Search" xml:space="preserve"><value>Pesquisar tarefa, ID ou projeto...</value></data>
+  <data name="Filter_All" xml:space="preserve"><value>Todas</value></data>
+  <data name="Filter_Pending" xml:space="preserve"><value>Pendentes</value></data>
+  <data name="Filter_InProgress" xml:space="preserve"><value>Em Curso</value></data>
+  <data name="Label_Loading" xml:space="preserve"><value>A carregar tarefas de campo...</value></data>
+  <data name="Label_NoRecords" xml:space="preserve"><value>Nenhuma tarefa atribuída encontrada</value></data>
+  <data name="Label_NoName" xml:space="preserve"><value>Sem nome</value></data>
+  <data name="Label_NoDescription" xml:space="preserve"><value>Sem descrição técnica adicional.</value></data>
+  <data name="Label_Description" xml:space="preserve"><value>Descrição:</value></data>
+  <data name="Label_StartDate" xml:space="preserve"><value>Início:</value></data>
+  <data name="Label_EndDate" xml:space="preserve"><value>Fim:</value></data>
+  <data name="Label_UndefinedDate" xml:space="preserve"><value>Não definida</value></data>
+  <data name="Label_EstimatedShort" xml:space="preserve"><value>est.</value></data>
+  <data name="Label_Updating" xml:space="preserve"><value>A atualizar...</value></data>
+  <data name="Status_Pending" xml:space="preserve"><value>Pendente</value></data>
+  <data name="Btn_StartTask" xml:space="preserve"><value>Iniciar Tarefa</value></data>
+  <data name="Btn_PauseTask" xml:space="preserve"><value>Pausar / Pendente</value></data>
+  <data name="Label_NoParent" xml:space="preserve"><value>Sem tarefa principal</value></data>
+  <data name="Msg_DaysToStart1" xml:space="preserve"><value>Ainda faltam </value></data>
+  <data name="Msg_DaysToStart2" xml:space="preserve"><value> dias para o início</value></data>
+  <data name="Msg_DaysToEnd1" xml:space="preserve"><value>Faltam </value></data>
+  <data name="Msg_DaysToEnd2" xml:space="preserve"><value> dias para finalizar a tarefa</value></data>
+  <data name="Msg_Overdue1" xml:space="preserve"><value>Em atraso por </value></data>
+  <data name="Msg_Overdue2" xml:space="preserve"><value> dias</value></data>
+  <data name="Btn_CompleteTask" xml:space="preserve"><value>Concluir Tarefa</value></data>
+  <data name="Dialog_Complete_Title" xml:space="preserve"><value>Concluir tarefa</value></data>
+  <data name="Dialog_Complete_Subtext" xml:space="preserve"><value>Tem a certeza de que deseja concluir esta tarefa? Já registou todas as horas?</value></data>
+  <data name="Btn_Complete" xml:space="preserve"><value>Concluir</value></data>
+  <data name="Btn_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Btn_SaveProgress" xml:space="preserve"><value>Guardar progresso</value></data>
+  <data name="Label_ParentTask" xml:space="preserve"><value>Tarefa principal:</value></data>
+  <data name="Label_Progress" xml:space="preserve"><value>Progresso</value></data>
+  <data name="Tooltip_OpenForm" xml:space="preserve"><value>Abrir formulário de </value></data>
+  <data name="Label_SummaryError" xml:space="preserve"><value>Resumo de produtos indisponível</value></data>
+  <data name="Label_SummaryPending" xml:space="preserve"><value>Pendentes</value></data>
+  <data name="Label_SummaryInstalled" xml:space="preserve"><value>Instalados</value></data>
+  <data name="Label_SummaryReturned" xml:space="preserve"><value>Devolvidos</value></data>
+</root>

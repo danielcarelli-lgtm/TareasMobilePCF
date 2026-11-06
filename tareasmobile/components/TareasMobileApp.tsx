@@ -16,6 +16,7 @@ export interface TareasMobileAppProps {
     dataset: ComponentFramework.PropertyTypes.DataSet;
     webAPI: ComponentFramework.WebApi;
     navigation: ComponentFramework.Navigation;
+    resources?: ComponentFramework.Resources;
     refreshData: () => void;
 }
 
@@ -118,7 +119,8 @@ const safeGetDate = (
 const getScheduleStatus = (
     inicio: Date | undefined,
     fin: Date | undefined,
-    today: Date
+    today: Date,
+    t: (key: string, fallback: string) => string
 ): { text: string; color: string } | undefined => {
     if (!inicio || !fin) return undefined;
 
@@ -129,15 +131,15 @@ const getScheduleStatus = (
     const daysUntilEnd = Math.ceil((toCalendarDay(fin) - toCalendarDay(today)) / millisecondsPerDay);
 
     if (daysUntilStart > 0) {
-        return { text: `Aún faltan ${daysUntilStart} días para el inicio`, color: "#0078d4" };
+        return { text: `${t("Msg_DaysToStart1", "Aún faltan ")}${daysUntilStart}${t("Msg_DaysToStart2", " días para el inicio")}`, color: "#0078d4" };
     }
     if (daysUntilEnd >= 0) {
-        return { text: `Faltan ${daysUntilEnd} días para finalizar la tarea`, color: "#107c10" };
+        return { text: `${t("Msg_DaysToEnd1", "Faltan ")}${daysUntilEnd}${t("Msg_DaysToEnd2", " días para finalizar la tarea")}`, color: "#107c10" };
     }
-    return { text: `Vencida por ${Math.abs(daysUntilEnd)} días`, color: "#a4262c" };
+    return { text: `${t("Msg_Overdue1", "Vencida por ")}${Math.abs(daysUntilEnd)}${t("Msg_Overdue2", " días")}`, color: "#a4262c" };
 };
 
-export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAPI, navigation, refreshData }) => {
+export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAPI, navigation, resources, refreshData }) => {
     const [searchTerm, setSearchTerm] = React.useState<string>("");
     const [selectedFilter, setSelectedFilter] = React.useState<string>("all");
     const [updatingId, setUpdatingId] = React.useState<string | null>(null);
@@ -146,6 +148,19 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
     const [confirmCompleteId, setConfirmCompleteId] = React.useState<string | null>(null);
     const [resumenProductos, setResumenProductos] = React.useState<Record<string, ResumenProductos>>({});
     const [errorResumenProductos, setErrorResumenProductos] = React.useState(false);
+
+    const t = React.useCallback(
+        (key: string, defaultValue: string): string => {
+            if (resources && typeof resources.getString === "function") {
+                const val = resources.getString(key);
+                if (val && val !== key) {
+                    return val;
+                }
+            }
+            return defaultValue;
+        },
+        [resources]
+    );
 
     const tareas: TareaItem[] = React.useMemo(() => {
         if (!dataset || dataset.loading || !dataset.sortedRecordIds) return [];
@@ -163,23 +178,23 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
 
                 return {
                     id: record.getRecordId(),
-                    name: safeGetString(record, "sec_name", "Sin nombre"),
+                    name: safeGetString(record, "sec_name", t("Label_NoName", "Sin nombre")),
                     idtarea: safeGetString(record, "sec_idtarea", ""),
                     statecode: safeGetNumber(record, "statecode", 0),
                     statuscode: safeGetNumber(record, "statuscode", STATUS_CODE.pending),
-                    statusLabel: safeGetString(record, "statuscode", "Pendiente"),
+                    statusLabel: safeGetString(record, "statuscode", t("Status_Pending", "Pendiente")),
                     inicio: safeGetDate(record, "sec_inicio"),
                     fin: safeGetDate(record, "sec_fin"),
                     esfuerzoEstimado: safeGetNumber(record, "sec_esfuerzoestimado", 0),
                     horasImputadas: safeGetNumber(record, "sec_horasimputadas", 0),
                     progreso: safeGetNumber(record, "sec_progreso", 0),
-                    tareaPadre: safeGetString(record, "sec_tareaprincipalid", "Sin tarea padre"),
-                    descripcion: safeGetString(record, "sec_descripcion", "Sin descripción técnica adicional."),
+                    tareaPadre: safeGetString(record, "sec_tareaprincipalid", t("Label_NoParent", "Sin tarea padre")),
+                    descripcion: safeGetString(record, "sec_descripcion", t("Label_NoDescription", "Sin descripción técnica adicional.")),
                     proyectoNum: proyNum
                 };
             })
             .filter((item): item is TareaItem => item !== null);
-    }, [dataset, dataset?.loading, dataset?.sortedRecordIds, dataset?.records]);
+    }, [dataset, dataset?.loading, dataset?.sortedRecordIds, dataset?.records, t]);
 
     React.useEffect(() => {
         const tareaIds = Array.from(
@@ -266,15 +281,15 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
     }, [tareas, webAPI]);
 
     const filteredTareas = React.useMemo(() => {
-        return tareas.filter((t) => {
+        return tareas.filter((tItem) => {
             const matchesSearch =
-                t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.idtarea.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.proyectoNum.toLowerCase().includes(searchTerm.toLowerCase());
+                tItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                tItem.idtarea.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                tItem.proyectoNum.toLowerCase().includes(searchTerm.toLowerCase());
 
             if (selectedFilter === "all") return matchesSearch;
-            if (selectedFilter === "in_progress") return matchesSearch && t.statuscode === STATUS_CODE.inProgress;
-            if (selectedFilter === "pending") return matchesSearch && t.statuscode === STATUS_CODE.pending;
+            if (selectedFilter === "in_progress") return matchesSearch && tItem.statuscode === STATUS_CODE.inProgress;
+            if (selectedFilter === "pending") return matchesSearch && tItem.statuscode === STATUS_CODE.pending;
             return matchesSearch;
         });
     }, [tareas, searchTerm, selectedFilter]);
@@ -334,7 +349,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
     if (!dataset || dataset.loading) {
         return (
             <div className="tm-loading-container">
-                <Spinner size={SpinnerSize.large} label="Cargando tareas de campo..." />
+                <Spinner size={SpinnerSize.large} label={t("Label_Loading", "Cargando tareas de campo...")} />
             </div>
         );
     }
@@ -345,11 +360,11 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                 <div className="tm-header-section">
                     <div className="tm-app-title">
                         <Icon iconName="TaskManager" className="tm-title-icon" />
-                        <span>Mis Tareas de Campo</span>
+                        <span>{t("Title_App", "Mis Tareas de Campo")}</span>
                         <span className="tm-badge-count">{filteredTareas.length}</span>
                     </div>
                     <SearchBox
-                        placeholder="Buscar tarea, ID o proyecto..."
+                        placeholder={t("Placeholder_Search", "Buscar tarea, ID o proyecto...")}
                         value={searchTerm}
                         onChange={(_, val) => {
                             setSearchTerm(typeof val === "string" ? val : "");
@@ -364,7 +379,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                 setSelectedFilter("all");
                             }}
                         >
-                            Todas
+                            {t("Filter_All", "Todas")}
                         </button>
                         <button
                             type="button"
@@ -373,7 +388,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                 setSelectedFilter("pending");
                             }}
                         >
-                            Pendientes
+                            {t("Filter_Pending", "Pendientes")}
                         </button>
                         <button
                             type="button"
@@ -382,7 +397,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                 setSelectedFilter("in_progress");
                             }}
                         >
-                            En Curso
+                            {t("Filter_InProgress", "En Curso")}
                         </button>
                     </div>
                 </div>
@@ -391,7 +406,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                     {filteredTareas.length === 0 ? (
                         <div className="tm-no-records">
                             <Icon iconName="Inbox" className="tm-empty-icon" />
-                            <p>No se encontraron tareas asignadas</p>
+                            <p>{t("Label_NoRecords", "No se encontraron tareas asignadas")}</p>
                         </div>
                     ) : (
                         filteredTareas.map((tarea) => {
@@ -401,7 +416,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                 0,
                                 Math.min(progressDrafts[tarea.id] ?? tarea.progreso, 100)
                             );
-                            const scheduleStatus = getScheduleStatus(tarea.inicio, tarea.fin, new Date());
+                            const scheduleStatus = getScheduleStatus(tarea.inicio, tarea.fin, new Date(), t);
                             const resumenProductosTarea =
                                 resumenProductos[normalizeRecordId(tarea.id)] ?? EMPTY_PRODUCT_SUMMARY;
 
@@ -440,8 +455,8 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                             <h3 className="tm-task-name">{tarea.name}</h3>
                                             <IconButton
                                                 iconProps={{ iconName: "Edit" }}
-                                                title={`Abrir formulario de ${tarea.name}`}
-                                                ariaLabel={`Abrir formulario de ${tarea.name}`}
+                                                title={`${t("Tooltip_OpenForm", "Abrir formulario de ")}${tarea.name}`}
+                                                ariaLabel={`${t("Tooltip_OpenForm", "Abrir formulario de ")}${tarea.name}`}
                                                 onClick={(event) => {
                                                     event.stopPropagation();
                                                     void handleOpenTask(tarea.id);
@@ -450,23 +465,23 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                         </div>
                                         <div className="tm-card-preview-info">
                                             <span>
-                                                <Icon iconName="Clock" /> {tarea.horasImputadas}h / {tarea.esfuerzoEstimado}h est.
+                                                <Icon iconName="Clock" /> {tarea.horasImputadas}h / {tarea.esfuerzoEstimado}h {t("Label_EstimatedShort", "est.")}
                                             </span>
                                             {errorResumenProductos ? (
-                                                <span className="tm-product-summary-error">Resumen de productos no disponible</span>
+                                                <span className="tm-product-summary-error">{t("Label_SummaryError", "Resumen de productos no disponible")}</span>
                                             ) : (
                                                 <div
                                                     className="tm-product-summary"
                                                     aria-label={`Productos de ${tarea.name}: ${resumenProductosTarea.pendientes} pendientes, ${resumenProductosTarea.instalados} instalados y ${resumenProductosTarea.devueltos} devueltos`}
                                                 >
                                                     <span className="tm-product-count product-pending">
-                                                        Pendientes {resumenProductosTarea.pendientes}
+                                                        {t("Label_SummaryPending", "Pendientes")} {resumenProductosTarea.pendientes}
                                                     </span>
                                                     <span className="tm-product-count product-installed">
-                                                        Instalados {resumenProductosTarea.instalados}
+                                                        {t("Label_SummaryInstalled", "Instalados")} {resumenProductosTarea.instalados}
                                                     </span>
                                                     <span className="tm-product-count product-returned">
-                                                        Devueltos {resumenProductosTarea.devueltos}
+                                                        {t("Label_SummaryReturned", "Devueltos")} {resumenProductosTarea.devueltos}
                                                     </span>
                                                 </div>
                                             )}
@@ -479,7 +494,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                     <div
                                         className="tm-progress-bar-container"
                                         role="progressbar"
-                                        aria-label={`Progreso de ${tarea.name}`}
+                                        aria-label={`${t("Label_Progress", "Progreso")} de ${tarea.name}`}
                                         aria-valuemin={0}
                                         aria-valuemax={100}
                                         aria-valuenow={displayedProgress}
@@ -506,11 +521,11 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                     {isExpanded && (
                                         <div className="tm-card-details-panel">
                                             <div className="tm-detail-row">
-                                                <strong>Tarea padre:</strong>
+                                                <strong>{t("Label_ParentTask", "Tarea padre:")}</strong>
                                                 <p>{tarea.tareaPadre}</p>
                                             </div>
                                             <div className="tm-detail-row">
-                                                <strong>Descripción:</strong>
+                                                <strong>{t("Label_Description", "Descripción:")}</strong>
                                                 <p>{tarea.descripcion}</p>
                                             </div>
                                             <div style={{ margin: "16px 0" }}>
@@ -518,7 +533,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                                     htmlFor={`tm-progress-${tarea.id}`}
                                                     style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}
                                                 >
-                                                    <strong>Progreso</strong>
+                                                    <strong>{t("Label_Progress", "Progreso")}</strong>
                                                     <span>{displayedProgress}%</span>
                                                 </label>
                                                 <input
@@ -528,7 +543,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                                     max={100}
                                                     step={1}
                                                     value={displayedProgress}
-                                                    aria-label={`Progreso de ${tarea.name}`}
+                                                    aria-label={`${t("Label_Progress", "Progreso")} de ${tarea.name}`}
                                                     disabled={isUpdating}
                                                     onChange={(event) => {
                                                         const progress = Number(event.currentTarget.value);
@@ -542,7 +557,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                                     }}
                                                 />
                                                 <DefaultButton
-                                                    text="Guardar progreso"
+                                                    text={t("Btn_SaveProgress", "Guardar progreso")}
                                                     iconProps={{ iconName: "Save" }}
                                                     disabled={
                                                         isUpdating ||
@@ -557,12 +572,12 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                             </div>
                                             <div className="tm-detail-dates">
                                                 <div>
-                                                    <small>Inicio:</small>
-                                                    <span>{tarea.inicio ? tarea.inicio.toLocaleDateString() : "No definida"}</span>
+                                                    <small>{t("Label_StartDate", "Inicio:")}</small>
+                                                    <span>{tarea.inicio ? tarea.inicio.toLocaleDateString() : t("Label_UndefinedDate", "No definida")}</span>
                                                 </div>
                                                 <div>
-                                                    <small>Fin:</small>
-                                                    <span>{tarea.fin ? tarea.fin.toLocaleDateString() : "No definida"}</span>
+                                                    <small>{t("Label_EndDate", "Fin:")}</small>
+                                                    <span>{tarea.fin ? tarea.fin.toLocaleDateString() : t("Label_UndefinedDate", "No definida")}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -570,12 +585,12 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
 
                                     <div className="tm-card-footer">
                                         {isUpdating ? (
-                                            <Spinner size={SpinnerSize.small} label="Actualizando..." />
+                                            <Spinner size={SpinnerSize.small} label={t("Label_Updating", "Actualizando...")} />
                                         ) : (
                                             <>
                                                 {tarea.statuscode === STATUS_CODE.pending && (
                                                     <PrimaryButton
-                                                        text="Iniciar Tarea"
+                                                        text={t("Btn_StartTask", "Iniciar Tarea")}
                                                         iconProps={{ iconName: "Play" }}
                                                         className="tm-action-btn btn-start"
                                                         onClick={() => {
@@ -585,7 +600,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                                 )}
                                                 {tarea.statuscode === STATUS_CODE.inProgress && (
                                                     <DefaultButton
-                                                        text="Pausar / Pendiente"
+                                                        text={t("Btn_PauseTask", "Pausar / Pendiente")}
                                                         iconProps={{ iconName: "Pause" }}
                                                         className="tm-action-btn btn-pause"
                                                         onClick={() => {
@@ -595,7 +610,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                                                 )}
                                                 {tarea.statuscode === STATUS_CODE.inProgress && (
                                                     <PrimaryButton
-                                                        text="Completar Tarea"
+                                                        text={t("Btn_CompleteTask", "Completar Tarea")}
                                                         iconProps={{ iconName: "CheckMark" }}
                                                         className="tm-action-btn btn-complete"
                                                         onClick={() => {
@@ -619,21 +634,21 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                     }}
                     dialogContentProps={{
                         type: DialogType.normal,
-                        title: "Completar tarea",
-                        subText: "¿Estás seguro de que quieres completar esta tarea? ¿Ya cargaste todas las horas de la tarea?"
+                        title: t("Dialog_Complete_Title", "Completar tarea"),
+                        subText: t("Dialog_Complete_Subtext", "¿Estás seguro de que quieres completar esta tarea? ¿Ya cargaste todas las horas de la tarea?")
                     }}
                     modalProps={{ isBlocking: updatingId === confirmCompleteId }}
                 >
                     <DialogFooter>
                         <PrimaryButton
-                            text="Completar"
+                            text={t("Btn_Complete", "Completar")}
                             onClick={() => {
                                 void handleConfirmComplete();
                             }}
                             disabled={!confirmCompleteId || updatingId === confirmCompleteId}
                         />
                         <DefaultButton
-                            text="Cancelar"
+                            text={t("Btn_Cancel", "Cancelar")}
                             onClick={() => {
                                 setConfirmCompleteId(null);
                             }}
@@ -642,7 +657,7 @@ export const TareasMobileApp: React.FC<TareasMobileAppProps> = ({ dataset, webAP
                     </DialogFooter>
                 </Dialog>
 
-                <div className="tm-version-tag">v0.0.12</div>
+                <div className="tm-version-tag">v0.0.13</div>
             </div>
         </div>
     );

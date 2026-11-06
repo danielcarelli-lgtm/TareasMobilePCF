@@ -134,6 +134,7 @@
 
 .tm-cards-container {
     display: grid;
+    align-items: start;
     width: 100%;
     min-width: 0;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));

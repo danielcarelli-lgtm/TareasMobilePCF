@@ -21,6 +21,7 @@ export class tareasmobile implements ComponentFramework.ReactControl<IInputs, IO
             dataset: dataset,
             webAPI: context.webAPI,
             navigation: context.navigation,
+            resources: context.resources,
             refreshData: () => {
                 if (dataset && typeof dataset.refresh === "function") {
                     dataset.refresh();
@@ -36,6 +37,6 @@ export class tareasmobile implements ComponentFramework.ReactControl<IInputs, IO
     }
 
     public destroy(): void {
-        // En controles Virtual, el runtime de Power Apps gestiona el desmontaje del árbol React
+        // En controles de tipo virtual el ciclo de vida de React lo gestiona la UCI
     }
 }

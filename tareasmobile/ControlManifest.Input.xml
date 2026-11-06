@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="sec" constructor="tareasmobile" version="0.0.12" display-name-key="TareasMobile" description-key="Tarjetas dinámicas móviles para gestión de tareas de técnicos de campo" control-type="virtual" >
+  <control namespace="sec" constructor="tareasmobile" version="0.0.14" display-name-key="TareasMobile_Title" description-key="TareasMobile_Desc" control-type="virtual" >
     <external-service-usage enabled="false">
     </external-service-usage>
     <data-set name="sampleDataSet" display-name-key="Dataset_Tareas_Mobile">
@@ -10,6 +10,9 @@
       <css path="css/tareasmobile.css" order="1" />
       <platform-library name="React" version="16.8.6" />
       <platform-library name="Fluent" version="8.29.0" />
+      <resx path="strings/tareasmobile.1033.resx" version="1.0.0" />
+      <resx path="strings/tareasmobile.3082.resx" version="1.0.0" />
+      <resx path="strings/tareasmobile.2070.resx" version="1.0.0" />
     </resources>
     <feature-usage>
       <uses-feature name="WebAPI" required="true" />
